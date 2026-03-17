@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Upload</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f5f5f5; }
+    .card { background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 100%; max-width: 480px; }
+    h1 { font-size: 1.25rem; margin-bottom: 1.5rem; }
+    label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.25rem; }
+    input { width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-size: 0.875rem; margin-bottom: 1rem; }
+    button { width: 100%; padding: 0.625rem; background: #0070f3; color: #fff; border: none; border-radius: 4px; font-size: 0.875rem; cursor: pointer; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    #status { margin-top: 1rem; font-size: 0.875rem; word-break: break-word; }
+    .ok { color: green; } .err { color: red; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Upload File to URL</h1>
+    <label for="url">Upload URL</label>
+    <input id="url" type="url" placeholder="https://storage.googleapis.com/..." required>
+    <label for="file">File</label>
+    <input id="file" type="file" required>
+    <button id="btn" onclick="upload()">Upload</button>
+    <div id="status"></div>
+  </div>
+  <script>
+    async function upload() {
+      const url = document.getElementById('url').value.trim();
+      const file = document.getElementById('file').files[0];
+      const status = document.getElementById('status');
+      const btn = document.getElementById('btn');
+
+      if (!url || !file) { status.className = 'err'; status.textContent = 'Please fill in both fields.'; return; }
+
+      btn.disabled = true;
+      status.className = ''; status.textContent = 'Uploading…';
+
+      try {
+        const res = await fetch(url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type || 'application/octet-stream' } });
+        if (res.ok) { status.className = 'ok'; status.textContent = 'Upload successful (' + res.status + ')'; }
+        else { status.className = 'err'; status.textContent = 'Failed: ' + res.status + ' ' + res.statusText; }
+      } catch (e) { status.className = 'err'; status.textContent = 'Error: ' + e.message; }
+      finally { btn.disabled = false; }
+    }
+  </script>
+</body>
+</html>
