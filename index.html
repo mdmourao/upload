@@ -9,30 +9,62 @@
     body { font-family: system-ui, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f5f5f5; }
     .card { background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 100%; max-width: 480px; }
     h1 { font-size: 1.25rem; margin-bottom: 1.5rem; }
+    .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid #e0e0e0; }
+    .tab-btn { padding: 0.625rem 1rem; background: none; border: none; cursor: pointer; font-size: 0.875rem; font-weight: 600; color: #666; border-bottom: 2px solid transparent; }
+    .tab-btn.active { color: #0070f3; border-bottom-color: #0070f3; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
     label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.25rem; }
     input { width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-size: 0.875rem; margin-bottom: 1rem; }
+    textarea { width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-size: 0.875rem; margin-bottom: 1rem; font-family: monospace; min-height: 150px; }
     button { width: 100%; padding: 0.625rem; background: #0070f3; color: #fff; border: none; border-radius: 4px; font-size: 0.875rem; cursor: pointer; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
-    #status { margin-top: 1rem; font-size: 0.875rem; word-break: break-word; }
+    #status, #status2 { margin-top: 1rem; font-size: 0.875rem; word-break: break-word; }
     .ok { color: green; } .err { color: red; }
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>Upload File to URL</h1>
-    <label for="url">Upload URL</label>
-    <input id="url" type="url" placeholder="https://storage.googleapis.com/..." required>
-    <label for="file">File</label>
-    <input id="file" type="file" required>
-    <button id="btn" onclick="upload()">Upload</button>
-    <div id="status"></div>
+    <h1>Upload File</h1>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('tab1')">Simple Upload</button>
+      <button class="tab-btn" onclick="switchTab('tab2')">Upload with JSON</button>
+    </div>
+
+    <!-- Tab 1: Simple Upload -->
+    <div id="tab1" class="tab-content active">
+      <label for="url">Upload URL</label>
+      <input id="url" type="url" placeholder="https://storage.googleapis.com/..." required>
+      <label for="file">File</label>
+      <input id="file" type="file" required>
+      <button onclick="upload()">Upload</button>
+      <div id="status"></div>
+    </div>
+
+    <!-- Tab 2: Upload with JSON Config -->
+    <div id="tab2" class="tab-content">
+      <label for="json">Upload Config (JSON)</label>
+      <textarea id="json" placeholder='{"id":"...","name":"...","upload":{"method":"POST","url":"...","fields":{...}}}'></textarea>
+      <label for="file2">File</label>
+      <input id="file2" type="file" required>
+      <button onclick="uploadWithJson()">Upload</button>
+      <div id="status2"></div>
+    </div>
   </div>
+
   <script>
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(tab).classList.add('active');
+      event.target.classList.add('active');
+    }
+
     async function upload() {
       const url = document.getElementById('url').value.trim();
       const file = document.getElementById('file').files[0];
       const status = document.getElementById('status');
-      const btn = document.getElementById('btn');
+      const btn = event.target;
 
       if (!url || !file) { status.className = 'err'; status.textContent = 'Please fill in both fields.'; return; }
 
@@ -46,6 +78,55 @@
       } catch (e) { status.className = 'err'; status.textContent = 'Error: ' + e.message; }
       finally { btn.disabled = false; }
     }
+
+    async function uploadWithJson() {
+      const jsonStr = document.getElementById('json').value.trim();
+      const file = document.getElementById('file2').files[0];
+      const status = document.getElementById('status2');
+      const btn = event.target;
+
+      if (!jsonStr || !file) { status.className = 'err'; status.textContent = 'Please fill in both fields.'; return; }
+
+      let config;
+      try {
+        config = JSON.parse(jsonStr);
+      } catch (e) {
+        status.className = 'err'; status.textContent = 'Invalid JSON: ' + e.message;
+        return;
+      }
+
+      if (!config.upload || !config.upload.url || !config.upload.fields) {
+        status.className = 'err'; status.textContent = 'Invalid config: missing upload.url or upload.fields';
+        return;
+      }
+
+      btn.disabled = true;
+      status.className = ''; status.textContent = 'Uploading…';
+
+      try {
+        const formData = new FormData();
+        // Add all fields from config
+        for (const [key, value] of Object.entries(config.upload.fields)) {
+          formData.append(key, value);
+        }
+        // Add the file (must be last for Google Cloud Storage)
+        formData.append('file', file);
+
+        const res = await fetch(config.upload.url, {
+          method: config.upload.method || 'POST',
+          body: formData
+        });
+
+        if (res.ok || res.status === 204) { 
+          status.className = 'ok'; status.textContent = 'Upload successful (' + res.status + ')'; 
+        } else { 
+          status.className = 'err'; status.textContent = 'Failed: ' + res.status + ' ' + res.statusText; 
+        }
+      } catch (e) { 
+        status.className = 'err'; status.textContent = 'Error: ' + e.message; 
+      } finally { 
+        btn.disabled = false; 
+      }
+    }
   </script>
-</body>
 </html>
