@@ -44,7 +44,7 @@
     <!-- Tab 2: Upload with JSON Config -->
     <div id="tab2" class="tab-content">
       <label for="json">Upload Config (JSON)</label>
-      <textarea id="json" placeholder='{"id":"...","name":"...","upload":{"method":"POST","url":"...","fields":{...}}}'></textarea>
+      <textarea id="json" placeholder='{"method":"POST","url":"...","fields":{...}}'></textarea>
       <label for="file2">File</label>
       <input id="file2" type="file" required>
       <button onclick="uploadWithJson()">Upload</button>
@@ -95,8 +95,8 @@
         return;
       }
 
-      if (!config.upload || !config.upload.url || !config.upload.fields) {
-        status.className = 'err'; status.textContent = 'Invalid config: missing upload.url or upload.fields';
+      if (!config.url || !config.fields) {
+        status.className = 'err'; status.textContent = 'Invalid config: missing url or fields';
         return;
       }
 
@@ -106,14 +106,14 @@
       try {
         const formData = new FormData();
         // Add all fields from config
-        for (const [key, value] of Object.entries(config.upload.fields)) {
+        for (const [key, value] of Object.entries(config.fields)) {
           formData.append(key, value);
         }
         // Add the file (must be last for Google Cloud Storage)
         formData.append('file', file);
 
-        const res = await fetch(config.upload.url, {
-          method: config.upload.method || 'POST',
+        const res = await fetch(config.url, {
+          method: config.method || 'POST',
           body: formData
         });
 
